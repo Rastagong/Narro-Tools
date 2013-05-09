@@ -1,31 +1,30 @@
 # -*-coding:iso-8859-1 -*
-import configparser,os,pygame,xml.dom.minidom
+import sys,os,pygame,xml.dom.minidom
 from pygame.locals import *
+sys.path.append(os.pardir)
 from interacteur import *
 
 class Appli:
     def executer(self):
         """Exécute le script"""
-        interacteur = Interacteur()
-        listeTilesets = os.listdir("../Ressources/") #Liste des images tilesets
-        message = "Quel tileset choisissez-vous ?\n" 
-        i, choixPossibles = 0,list()
-        listeTilesets = [tileset for tileset in listeTilesets if ".tsx" not in tileset and ".sqtileset" not in tileset and ".png" in tileset]
-        while i < len(listeTilesets):
-            message += str(i+1) + ". " + listeTilesets[i] + "\n" #Ajout du nom de chaque image au message qui sera affiché
-            choixPossibles.append(i+1) #Ajout du chiffre d'un tileset à la liste des choix possibles
-            i += 1
-        choix = interacteur.recupererChoixDuJoueur(choixPossibles,message) #Récupération du choix
-        nomTileset = listeTilesets[choix-1] 
-        nomFichier = "../Ressources/" + nomTileset[:nomTileset.find(".png")] + ".tsx"
-        if os.path.lexists(nomFichier) is True:
-            print("Un tileset correspondant existe déjà.")
+        if len(sys.argv) < 2:
+            print("Vous devez indiquer une image.")
             raise SystemExit
-        nomImage = "../Ressources/" + nomTileset
+        cheminImage = sys.argv[1]
+        cheminTileset = cheminImage[:cheminImage.find(".png")] + ".tsx"
+        nomTileset = os.path.basename(cheminTileset)
+        if os.path.lexists(cheminTileset) is True:
+            print("Un tileset correspondant existe déjà.")
+            interacteur = Interacteur()
+            if interacteur.yesNoQuestion("Voulez-vous écraser le tileset {0} ?".format(nomTileset), yesParDefaut=False) is False:
+                print("Très bien, nous ne ferons rien.")
+                raise SystemExit
+            else:
+                print("Parfait !")
         try:
-            surfaceTileset = pygame.image.load(nomImage)
+            surfaceTileset = pygame.image.load(cheminImage)
         except:
-            print("Impossible de charger {0}".format(nomImage))
+            print("Impossible de charger {0}".format(cheminImage))
             raise SystemExit
         orgaXML = xml.dom.minidom.getDOMImplementation().createDocument(None,"tileset",None)
         tilesetXML = orgaXML.documentElement
@@ -35,12 +34,10 @@ class Appli:
         tilesetXML.appendChild(orgaXML.createElement("image"))
         imageXML = tilesetXML.getElementsByTagName("image")[0]
         imageXML.setAttribute("source", nomTileset )
-        imageXML.setAttribute("trans","ffffff")
         longueur,largeur = surfaceTileset.get_width(), surfaceTileset.get_height()
         imageXML.setAttribute("width", str(longueur) )
         imageXML.setAttribute("height", str(largeur) )
         nombreTiles = int(longueur / 32) * int(largeur / 32)
-        print(nombreTiles)
         i = 0
         while i < nombreTiles:
             tile = orgaXML.createElement("tile")
@@ -53,10 +50,12 @@ class Appli:
             propri.setAttribute("value","True")
             propris.appendChild(propri)
             i += 1
-        with open(nomFichier,"w") as fichier:
-            orgaXML.writexml(fichier, addindent="   ", newl="\n", encoding="UTF-8")
+        with open(cheminTileset,"w") as fichier:
+            orgaXML.writexml(fichier, addindent="    ", newl="\n", encoding="UTF-8")
         orgaXML.unlink()
+        print("Le tileset {0} a bien été créé !".format(nomTileset))
 
 if __name__ == "__main__":
     appli = Appli()
     appli.executer()
+
